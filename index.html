@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fake Product Detector</title>
+    <style>
+  body {
+            font-family: Arial, sans-serif;
+            background-color: white;
+            color: black;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .text-side {
+            text-align: left;
+            margin-right: 20px;
+        }
+
+        button {
+            background-color: black;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        button:hover {
+            background-color: white;
+            color: black;
+            border: 1px solid black;
+        }
+
+        #video {
+            border: 5px solid black;
+        }
+
+        .start-animate {
+            animation: startAnimation 2s infinite;
+        }
+
+        @keyframes startAnimation {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        h1 {
+            margin-top: 50px;
+        }
+    </style>
+    <script>
+        let videoStream;
+
+        function startCamera() {
+            const video = document.getElementById('video');
+            if (navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                    .then(function(stream) {
+                        videoStream = stream;
+                        video.srcObject = stream;
+                        video.play();
+                    })
+                    .catch(function(err) {
+                        console.log("Something went wrong!", err);
+                    });
+            }
+        }
+
+        function scanBarcode() {
+            const video = document.getElementById('video');
+            var canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            sendImageToServer(canvas.toDataURL('image/png'));
+        }
+
+        function sendImageToServer(imageData) {
+            fetch('/scan', {
+                method: 'POST',
+                body: imageData.replace(/^data:image\/(png|jpg);base64,/, ""),
+                headers: {
+                    'Content-Type': 'application/octet-stream'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Barcode: " + data.barcode + "\nStatus: " + data.status);
+                } else {
+                    alert("Error: " + data.error);
+                }
+            })
+            .catch(err => {
+                alert("Error sending image to server: " + err);
+            });
+        }
+
+        function stopCamera() {
+            if (videoStream) {
+                videoStream.getTracks()[0].stop();
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <h1>Fake Product Detector</h1>
+    <p>Here i will test if the product is real or fake. scan the barcode there. if that one matches then it will print real product and vice versa</p>
+    <button onclick="startCamera()">Start Camera</button>
+    <button onclick="scanBarcode()">Scan Barcode</button>
+    <button onclick="stopCamera()">Stop Camera</button>
+    <video id="video" width="640" height="480" autoplay></video>
+</body>
+</html>
